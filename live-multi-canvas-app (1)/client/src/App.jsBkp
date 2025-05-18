@@ -1,0 +1,100 @@
+
+import React, { useRef, useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:5001');
+
+  /**
+   * This is the main App component.
+   *
+   * It renders a canvas for the user to draw on, and a dropdown menu to select the canvas.
+   * When the user draws on the canvas, it emits a 'drawing' event to the server with
+   * the drawing data.
+   *
+   * The server emits a 'drawing' event to all connected clients with the drawing data,
+   * which is handled in the 'useEffect' hook.
+   *
+   * The user's ID is randomly generated and stored in local storage.
+   * The canvas ID is stored in the component's state and can be changed by the user.
+   * The color of the drawing is stored in the component's state and can be changed by the user.
+   *
+   * @returns {React.Component} The main App component.
+   */
+const App = () => {
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [canvasId, setCanvasId] = useState('canvas1');
+  const [userId, setUserId] = useState(() => 'User-' + Math.floor(Math.random() * 1000));
+  const [color, setColor] = useState('black');
+
+  useEffect(() => {
+    socket.emit('join-canvas', { canvasId, userId });
+
+    socket.on('drawing', (data) => {
+      const context = canvasRef.current.getContext('2d');
+      drawLine(data.x0, data.y0, data.x1, data.y1, data.color);
+    });
+
+    return () => socket.off('drawing');
+  }, [canvasId]);
+
+  const drawLine = (x0, y0, x1, y1, strokeColor) => {
+    const context = canvasRef.current.getContext('2d');
+    context.beginPath();
+    context.moveTo(x0, y0);
+    context.lineTo(x1, y1);
+    context.strokeStyle = strokeColor;
+    context.lineWidth = 2;
+    context.stroke();
+    context.closePath();
+  };
+
+  const handleMouseDown = (e) => {
+    setIsDrawing(true);
+    const rect = canvasRef.current.getBoundingClientRect();
+    canvasRef.current.lastX = e.clientX - rect.left;
+    canvasRef.current.lastY = e.clientY - rect.top;
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDrawing) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    drawLine(canvasRef.current.lastX, canvasRef.current.lastY, x, y, color);
+    socket.emit('drawing', {
+      canvasId,
+      x0: canvasRef.current.lastX,
+      y0: canvasRef.current.lastY,
+      x1: x,
+      y1: y,
+      color,
+      userId
+    });
+    canvasRef.current.lastX = x;
+    canvasRef.current.lastY = y;
+  };
+
+  const handleMouseUp = () => setIsDrawing(false);
+
+  return (
+    <div>
+      <h2>Canvas: {canvasId} | User: {userId}</h2>
+      <select value={canvasId} onChange={(e) => setCanvasId(e.target.value)}>
+        <option value="canvas1">Canvas 1</option>
+        <option value="canvas2">Canvas 2</option>
+      </select>
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={600}
+        style={{ border: '1px solid black', marginTop: '10px' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      />
+    </div>
+  );
+};
+
+export default App;
