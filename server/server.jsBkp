@@ -1,0 +1,41 @@
+
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const { Server } = require('socket.io');
+
+const app = express();
+app.use(cors());
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+const canvases = {}; // Store drawing data per canvas
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  socket.on('join-canvas', ({ canvasId, userId }) => {
+    socket.join(canvasId);
+    socket.canvasId = canvasId;
+    socket.userId = userId;
+    console.log(`User ${userId} joined canvas ${canvasId}`);
+  });
+
+  socket.on('drawing', (data) => {
+    const { canvasId, x0, y0, x1, y1, color, userId } = data;
+    socket.to(canvasId).emit('drawing', { x0, y0, x1, y1, color, userId });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+server.listen(5001, () => {
+  console.log('Server running on http://localhost:5001');
+});
