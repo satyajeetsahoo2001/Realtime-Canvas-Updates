@@ -2,8 +2,8 @@ import React, { useRef, useEffect, useState } from 'react'; // Import React hook
 import { io } from 'socket.io-client'; // Import socket.io-client for WebSocket connection
 import { useSearchParams } from 'react-router-dom'; // Import hook to read URL query parameters
 
-const socket = io('http://localhost:5001'); // Connect to WebSocket server at port 5001
-
+//const socket = io('http://localhost:5001'); // Connect to WebSocket server at port 5001
+const socket = io('https://satya-collaboration.onrender.com');
 const App = () => { // Define the main React functional component
   const canvasRef = useRef(null); // Create a ref to access the canvas DOM element
   const [isDrawing, setIsDrawing] = useState(false); // State to track if user is currently drawing
